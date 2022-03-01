@@ -2,19 +2,9 @@ from pyteal import *
 
 
 # global variables
-staking_token_id = App.globalGet(Bytes("staking_token_id"))
-
-is_governance = Txn.sender() == App.globalGet(Bytes("governance_address"))
-num_reports = Bytes("num_reports")
-stake_amount = Bytes("stake_amount")
-governance_address = Bytes("governance_address")
-query_id = Bytes("query_id")
-query_data = Bytes("query_data")
-staking_status = Bytes("staking_status")
-tipper = Bytes("tipper")
-reporter = Bytes("reporter_address")
-currently_staked = Bytes("currently_staked")
-value = Bytes("value")
+tellor_app_id = Bytes("tellor_app_id")
+tellor_query_id = Bytes("tellor_query_id")
+tellor_value = Bytes("tellor_value")
 
 """
 functions listed in alphabetical order
@@ -32,48 +22,45 @@ def create():
     solidity equivalent: constructor()
 
     args:
-    0) governance address
-    1) query id
-    2) query data
+    0) tellor app id
+    1) tellor query id
 
     """
     return Seq(
         [
-            App.globalPut(tipper, Txn.sender()),
             # TODO assert application args length is correct
-            App.globalPut(governance_address, Txn.application_args[0]),
-            App.globalPut(query_id, Txn.application_args[1]),
-            App.globalPut(query_data, Txn.application_args[2]),  # TODO perhaps parse from ipfs
-            # 0-not Staked, 1=Staked
-            App.globalPut(reporter, Bytes("")),
-            App.globalPut(staking_status, Int(0)),
-            App.globalPut(num_reports, Int(0)),
-            App.globalPut(stake_amount, Int(200000)),  # 200 dollars of ALGO
+            App.globalPut(tellor_app_id, Txn.application_args[0]),
+            App.globalPut(tellor_query_id, Txn.application_args[1]),
             Approve(),
         ]
     )
 
 
-def report():
+def bid():
     """
     changes the current value recorded in the contract
     solidity equivalent: submitValue()
 
     Txn args:
-    0) will always equal "report" (in order to route to this method)
-    1) query_id -- the ID of the data requested to be put on chain
-    2) value -- the data submitted to the query
+    0) will always equal "bid" (in order to route to this method)
+    1) prediction (int) -- the price of the asset the bidder predicts
     """
+    on_stake_tx_index = Txn.group_index() - Int(1)
+
+    # enforced two part Gtxn: 1) send token to contract, 2) stake
     return Seq(
         [
             Assert(
                 And(
-                    App.globalGet(reporter) == Txn.sender(),
-                    App.globalGet(staking_status) == Int(1),
-                    App.globalGet(query_id) == Txn.application_args[1],
-                )
+                    Gtxn[on_stake_tx_index].sender() == Txn.sender(),
+                    Gtxn[on_stake_tx_index].receiver() == Global.current_application_address(),
+                    Gtxn[on_stake_tx_index].amount() == Int(1000), #1 algo
+                    Gtxn[on_stake_tx_index].type_enum() == TxnType.Payment,
+                ),
             ),
-            App.globalPut(value, Txn.application_args[2]),
+            #record bid amount
+            #bids are 1 algo
+            App.globalPut(Txn.sender(), Int(1)),
             Approve(),
         ]
     )
