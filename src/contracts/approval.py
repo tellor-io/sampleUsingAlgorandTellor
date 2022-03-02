@@ -19,10 +19,10 @@ def approval_program():
 
     program = Cond(
         [Txn.application_id() == Int(0), create()],
-        [Txn.on_completion() == OnComplete.NoOp, handle_method()],
-        [Txn.on_completion() == OnComplete.DeleteApplication, Return(is_governance)],
-        [Txn.on_completion() == OnComplete.UpdateApplication, Return(is_governance)],
-        # [Txn.on_completion() == OnComplete.CloseOut, close()]
+        [Txn.on_completion() == OnComplete.OptIn, bid()],
+        # [Txn.on_completion() == OnComplete.DeleteApplication, Return(is_governance)],
+        # [Txn.on_completion() == OnComplete.UpdateApplication, Return(is_governance)],
+        [Txn.on_completion() == OnComplete.CloseOut, settle()]
     )
 
     return program
