@@ -22,7 +22,7 @@ def approval_program():
         [Txn.on_completion() == OnComplete.OptIn, bid()],
         # [Txn.on_completion() == OnComplete.DeleteApplication, Return(is_governance)],
         # [Txn.on_completion() == OnComplete.UpdateApplication, Return(is_governance)],
-        [Txn.on_completion() == OnComplete.CloseOut, settle()]
+        [Txn.on_completion() == OnComplete.CloseOut, settle()],
     )
 
     return program
