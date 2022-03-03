@@ -79,30 +79,49 @@ def settle():
 
     called on CloseOut transaction
     """
-
+    
     actual = App.globalGetEx(App.globalGet(tellor_app_id), Bytes("value"))
-    counter = 0
-    closeness = 2**16
-    winner = ""
-    while counter < len(str(App.globalGet(bidders))):
-        winner = str(App.globalGet(bidders))[counter:counter+32]
-        print(winner)
-        prediction = App.globalGet(Addr(winner))
-        current_closeness = abs(prediction - actual)
+    counter = ScratchVar(TealType.uint64)
+    closeness = ScratchVar(TealType.uint64)
+    winner = ScratchVar(TealType.bytes)
+    prediction = ScratchVar(TealType.uint64)
+    # while counter < len(str(App.globalGet(bidders))):
+    #     winner = Extract(App.globalGet(bidders), Int(counter), Int(32))
+    #     prediction = App.globalGet(winner)
+    #     current_closeness = abs(prediction - actual)
 
-        if current_closeness < closeness:
-            closeness = current_closeness
+    #     if current_closeness < closeness:
+    #         closeness = current_closeness
     
 
     return Seq(
         [
+            Assert(
+                Len(App.globalGet(bidders)) >= Int(64)
+            ),
+            actual,
+            prediction.store(Int(0)),
+            counter.store(Int(0)),
+            closeness.store(Int(2**16)),
+            winner.store(Extract(App.globalGet(bidders), counter.load(), Int(32))),
+            While(counter.load() < Len(App.globalGet(bidders))).Do(
+                Seq([
+                    If(
+                        App.globalGet(winner.load()) < closeness.load(),
+                        winner.store(Extract(App.globalGet(bidders), counter.load(), Int(32)))
+                    ),
+                    counter.store(counter.load() + Int(32))
+                ])
+
+            ),
             InnerTxnBuilder.Begin(),
             InnerTxnBuilder.SetFields(
                 {
                     TxnField.type_enum: TxnType.Payment,
-                    TxnField.close_remainder_to: App.globalGet(Addr(winner)),
+                    TxnField.close_remainder_to: App.globalGet(winner.load()),
                 }
             ),
             InnerTxnBuilder.Submit(),
+            Approve(),
     ]
     )

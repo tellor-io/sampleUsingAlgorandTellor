@@ -1,0 +1,135 @@
+#pragma version 5
+txn ApplicationID
+int 0
+==
+bnz main_l14
+txn OnCompletion
+int OptIn
+==
+bnz main_l10
+txn OnCompletion
+int CloseOut
+==
+bnz main_l4
+err
+main_l4:
+byte "bidders"
+app_global_get
+len
+int 64
+>=
+assert
+byte "tellor_app_id"
+app_global_get
+byte "value"
+app_global_get_ex
+store 0
+store 1
+int 0
+store 5
+int 0
+store 2
+int 65536
+store 3
+byte "bidders"
+app_global_get
+load 2
+int 32
+extract3
+store 4
+main_l5:
+load 2
+byte "bidders"
+app_global_get
+len
+<
+bnz main_l7
+itxn_begin
+int pay
+itxn_field TypeEnum
+load 4
+app_global_get
+itxn_field CloseRemainderTo
+itxn_submit
+int 1
+return
+main_l7:
+load 4
+app_global_get
+load 3
+<
+bnz main_l9
+main_l8:
+load 2
+int 32
++
+store 2
+b main_l5
+main_l9:
+byte "bidders"
+app_global_get
+load 2
+int 32
+extract3
+store 4
+b main_l8
+main_l10:
+txn GroupIndex
+int 1
+-
+gtxns Sender
+txn Sender
+==
+txn GroupIndex
+int 1
+-
+gtxns Receiver
+global CurrentApplicationAddress
+==
+&&
+txn GroupIndex
+int 1
+-
+gtxns Amount
+int 1000
+==
+&&
+txn GroupIndex
+int 1
+-
+gtxns TypeEnum
+int pay
+==
+&&
+assert
+txn Sender
+int 1
+app_global_put
+byte "bidders"
+app_global_get
+byte ""
+==
+bnz main_l13
+byte "bidders"
+byte "bidders"
+app_global_get
+txn Sender
+concat
+app_global_put
+main_l12:
+int 1
+return
+main_l13:
+byte "bidders"
+txn Sender
+app_global_put
+b main_l12
+main_l14:
+byte "tellor_app_id"
+txna ApplicationArgs 0
+app_global_put
+byte "tellor_query_id"
+txna ApplicationArgs 1
+app_global_put
+int 1
+return
