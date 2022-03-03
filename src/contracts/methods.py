@@ -1,4 +1,3 @@
-from fileinput import close
 from pyteal import *
 
 
@@ -54,24 +53,22 @@ def bid():
                 And(
                     Gtxn[on_stake_tx_index].sender() == Txn.sender(),
                     Gtxn[on_stake_tx_index].receiver() == Global.current_application_address(),
-                    Gtxn[on_stake_tx_index].amount() == Int(1000), #1 algo
+                    Gtxn[on_stake_tx_index].amount() == Int(1000),  # 1 algo
                     Gtxn[on_stake_tx_index].type_enum() == TxnType.Payment,
                 ),
             ),
-            #record bid amount
-            #bids are 1 algo
+            # record bid amount
+            # bids are 1 algo
             App.globalPut(Txn.sender(), Int(1)),
             If(
                 App.globalGet(bidders) == Bytes(""),
                 App.globalPut(bidders, Txn.sender()),
-                App.globalPut(
-                    bidders,
-                    Concat(App.globalGet(bidders), Txn.sender())
-                    )
-                ),
+                App.globalPut(bidders, Concat(App.globalGet(bidders), Txn.sender())),
+            ),
             Approve(),
         ]
     )
+
 
 def settle():
     """
@@ -79,7 +76,7 @@ def settle():
 
     called on CloseOut transaction
     """
-    
+
     actual = App.globalGetEx(App.globalGet(tellor_app_id), Bytes("value"))
     counter = ScratchVar(TealType.uint64)
     closeness = ScratchVar(TealType.uint64)
@@ -92,27 +89,25 @@ def settle():
 
     #     if current_closeness < closeness:
     #         closeness = current_closeness
-    
 
     return Seq(
         [
-            Assert(
-                Len(App.globalGet(bidders)) >= Int(64)
-            ),
+            Assert(Len(App.globalGet(bidders)) >= Int(64)),
             actual,
             prediction.store(Int(0)),
             counter.store(Int(0)),
-            closeness.store(Int(2**16)),
+            closeness.store(Int(2 ** 16)),
             winner.store(Extract(App.globalGet(bidders), counter.load(), Int(32))),
             While(counter.load() < Len(App.globalGet(bidders))).Do(
-                Seq([
-                    If(
-                        App.globalGet(winner.load()) < closeness.load(),
-                        winner.store(Extract(App.globalGet(bidders), counter.load(), Int(32)))
-                    ),
-                    counter.store(counter.load() + Int(32))
-                ])
-
+                Seq(
+                    [
+                        If(
+                            App.globalGet(winner.load()) < closeness.load(),
+                            winner.store(Extract(App.globalGet(bidders), counter.load(), Int(32))),
+                        ),
+                        counter.store(counter.load() + Int(32)),
+                    ]
+                )
             ),
             InnerTxnBuilder.Begin(),
             InnerTxnBuilder.SetFields(
@@ -123,5 +118,5 @@ def settle():
             ),
             InnerTxnBuilder.Submit(),
             Approve(),
-    ]
+        ]
     )
